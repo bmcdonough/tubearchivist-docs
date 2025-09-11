@@ -36,6 +36,8 @@ nav:
     - Developer:
         - 'tubearchivist-docs': 'developer/tubearchivist-docs.md'
         - 'tubearchivist': 'developer/tubearchivist.md'
+        - 'tubearchivist Details':
+          - 'Video and Audio Merging': 'developer/video_audio_merging.md'
     - Links:
         - 'Main site': https://www.tubearchivist.com
         - 'Join us on Discord!': https://www.tubearchivist.com/discord
