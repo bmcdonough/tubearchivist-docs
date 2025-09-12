@@ -1,52 +1,54 @@
 site_name: Tube Archivist Documentation
 site_url: https://docs.tubearchivist.com
 nav:
-    - Home: 'index.md'
-    - User Guide:
-        - 'FAQ': 'faq.md'
-        - 'URLs': 'urls.md'
-        - 'Downloads Page': 'downloads.md'
-        - 'Channels Pages': 'channels.md'
-        - 'Video': 'video.md'
-        - 'Playlists Pages': 'playlists.md'
-        - 'Search': 'search.md'
-        - 'Users': 'users.md'
-        - Settings:
-          - 'Dashboard': 'settings/dashboard.md'
-          - 'User': 'settings/user.md'
-          - 'Application': 'settings/application.md'
-          - 'Scheduling': 'settings/scheduling.md'
-          - 'Actions': 'settings/actions.md'
-        - 'Advanced': 'advanced.md'
-    - Installation:
-        - 'Environment Variables': 'installation/env-vars.md'
-        - 'Docker-Compose (default)': 'installation/docker-compose.md'
-        - 'Docker for Beginners': 'installation/docker-for-beginners.md'
-        - 'Podman': 'installation/podman.md'
-        - 'Proxmox LXC': 'installation/proxmox-lxc.md'
-        - 'Synology': 'installation/synology.md'
-        - 'Unraid': 'installation/unraid.md'
-    - Configuration:
-        - 'LDAP Authentication': 'configuration/ldap.md'
-        - 'Forward Authentication': 'configuration/forward-auth.md'
-        - 'Stylesheets': 'configuration/stylesheets.md'
-    - API:
-        - 'Introduction': 'api/introduction.md'
-        - 'Docs': 'api/docs.md'
-    - Links:
-        - 'Main site': https://www.tubearchivist.com
-        - 'Join us on Discord!': https://www.tubearchivist.com/discord
-        - 'License': https://github.com/tubearchivist/tubearchivist/blob/master/LICENSE
-        - 'Release Notes': https://github.com/tubearchivist/tubearchivist/releases
+- Home: index.md
+- User Guide:
+  - FAQ: faq.md
+  - URLs: urls.md
+  - Downloads Page: downloads.md
+  - Channels Pages: channels.md
+  - Video: video.md
+  - Playlists Pages: playlists.md
+  - Search: search.md
+  - Users: users.md
+  - Settings:
+    - Dashboard: settings/dashboard.md
+    - User: settings/user.md
+    - Application: settings/application.md
+    - Scheduling: settings/scheduling.md
+    - Actions: settings/actions.md
+  - Advanced: advanced.md
+- Installation:
+  - Environment Variables: installation/env-vars.md
+  - Docker-Compose (default): installation/docker-compose.md
+  - Docker for Beginners: installation/docker-for-beginners.md
+  - Podman: installation/podman.md
+  - Proxmox LXC: installation/proxmox-lxc.md
+  - Synology: installation/synology.md
+  - Unraid: installation/unraid.md
+- Configuration:
+  - LDAP Authentication: configuration/ldap.md
+  - Forward Authentication: configuration/forward-auth.md
+  - Stylesheets: configuration/stylesheets.md
+- API:
+  - Introduction: api/introduction.md
+  - API Reference: api/generated/reference.md
+  - OpenAPI Schema: api/generated/schema.json
+  - Interactive Docs: api/docs.md
+- Links:
+  - Main site: https://www.tubearchivist.com
+  - Join us on Discord!: https://www.tubearchivist.com/discord
+  - License: https://github.com/tubearchivist/tubearchivist/blob/master/LICENSE
+  - Release Notes: https://github.com/tubearchivist/tubearchivist/releases
 repo_url: https://github.com/tubearchivist/docs
 markdown_extensions:
-    - toc:
-        permalink: "#"
-    - admonition
-    - pymdownx.details
-    - pymdownx.superfences
-    - tables
-    - footnotes
+- toc:
+    permalink: '#'
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- tables
+- footnotes
 theme:
   name: material
   logo: assets/logo-dark.jpg
@@ -56,17 +58,17 @@ theme:
   palette:
     scheme: tubearchivist
   features:
-    - navigation.footer
-    - content.code.copy
+  - navigation.footer
+  - content.code.copy
 extra_css:
-  - stylesheets/style.css
+- stylesheets/style.css
 extra:
   analytics:
     provider: custom
 plugins:
-  - social:
-      cards_layout_options:
-        background_color: "#00202f"
-        color: "#eeeeee"
-  - search:
-      lang: en
+- social:
+    cards_layout_options:
+      background_color: '#00202f'
+      color: '#eeeeee'
+- search:
+    lang: en
