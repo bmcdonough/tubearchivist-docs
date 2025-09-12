@@ -1,0 +1,376 @@
+name: Update API Documentation
+
+on:
+  # Trigger manually for testing
+  workflow_dispatch:
+    inputs:
+      tubearchivist_version:
+        description: 'TubeArchivist version to extract schema from (e.g., v0.5.0 or latest)'
+        required: false
+        default: 'latest'
+  
+  # Trigger on schedule to check for new releases
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+
+  # Trigger when tubearchivist releases (requires webhook setup)
+  repository_dispatch:
+    types: [tubearchivist-release]
+
+jobs:
+  update-api-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tubearchivist-docs
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Determine TubeArchivist version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            VERSION="${{ github.event.client_payload.version }}"
+          elif [ "${{ github.event.inputs.tubearchivist_version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.tubearchivist_version }}"
+          else
+            # Get latest release version from GitHub API
+            VERSION=$(curl -s https://api.github.com/repos/tubearchivist/tubearchivist/releases/latest | jq -r '.tag_name')
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Using TubeArchivist version: ${VERSION}"
+
+      - name: Start TubeArchivist instance
+        run: |
+          # Create a temporary docker-compose file for schema extraction
+          cat > docker-compose-schema.yml << EOF
+          version: '3.3'
+          services:
+            tubearchivist:
+              image: bbilly1/tubearchivist:${{ steps.version.outputs.VERSION }}
+              container_name: tubearchivist-schema
+              restart: no
+              ports:
+                - "8000:8000"
+              volumes:
+                - media:/youtube
+                - cache:/cache
+              environment:
+                - ES_URL=http://archivist-es:9200
+                - REDIS_CON=redis://archivist-redis:6379
+                - TA_HOST=http://localhost:8000
+                - TA_USERNAME=admin
+                - TA_PASSWORD=admin123
+                - ELASTIC_PASSWORD=verysecret
+                - TZ=UTC
+                - DJANGO_DEBUG=1
+              depends_on:
+                - archivist-es
+                - archivist-redis
+
+            archivist-redis:
+              image: redis/redis-stack-server
+              container_name: archivist-redis-schema
+              restart: no
+              expose:
+                - "6379"
+              volumes:
+                - redis:/data
+              depends_on:
+                - archivist-es
+
+            archivist-es:
+              image: bbilly1/tubearchivist-es
+              container_name: archivist-es-schema
+              restart: no
+              environment:
+                - "ELASTIC_PASSWORD=verysecret"
+                - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+                - "xpack.security.enabled=true"
+                - "discovery.type=single-node"
+                - "path.repo=/usr/share/elasticsearch/data/snapshot"
+              expose:
+                - "9200"
+              volumes:
+                - es:/usr/share/elasticsearch/data
+              ulimits:
+                memlock:
+                  soft: -1
+                  hard: -1
+
+          volumes:
+            media:
+            cache:
+            redis:
+            es:
+          EOF
+
+          # Start services
+          docker-compose -f docker-compose-schema.yml up -d
+          
+          # Wait for services to be ready
+          echo "Waiting for services to start..."
+          sleep 60
+          
+          # Wait for TubeArchivist to be ready
+          for i in {1..30}; do
+            if curl -f -s http://localhost:8000/api/schema/ > /dev/null; then
+              echo "TubeArchivist is ready!"
+              break
+            fi
+            echo "Waiting for TubeArchivist... (attempt $i/30)"
+            sleep 10
+          done
+
+      - name: Extract API schema
+        run: |
+          # Download the OpenAPI schema
+          curl -o api-schema.json http://localhost:8000/api/schema/
+          
+          # Verify the schema is valid JSON
+          python -m json.tool api-schema.json > /dev/null
+          
+          echo "Schema extracted successfully"
+          ls -la api-schema.json
+
+      - name: Stop TubeArchivist instance
+        run: |
+          docker-compose -f docker-compose-schema.yml down -v
+          docker system prune -f
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # Install tools for generating docs from OpenAPI
+          pip install swagger-ui-py pyyaml jinja2
+
+      - name: Generate API documentation
+        run: |
+          python << 'EOF'
+          import json
+          import yaml
+          from pathlib import Path
+          
+          # Load the schema
+          with open('api-schema.json', 'r') as f:
+              schema = json.load(f)
+          
+          # Create the API docs directory structure
+          Path('mkdocs/docs/api/generated').mkdir(exist_ok=True)
+          
+          # Generate a comprehensive API documentation page
+          doc_content = f"""# API Reference
+          
+          !!! info "Auto-generated Documentation"
+              This documentation was automatically generated from TubeArchivist {schema.get('info', {}).get('version', 'unknown')} on $(date).
+              
+              For the interactive API explorer, visit `/api/docs/` on your TubeArchivist instance.
+          
+          ## API Information
+          
+          - **Title**: {schema.get('info', {}).get('title', 'TubeArchivist API')}
+          - **Version**: {schema.get('info', {}).get('version', 'unknown')}
+          - **Description**: {schema.get('info', {}).get('description', 'API documentation for Tube Archivist backend.')}
+          
+          ## Base URL
+          
+          All API endpoints are relative to your TubeArchivist instance URL followed by `/api/`.
+          
+          For example, if your instance is at `https://tubearchivist.example.com`, the base URL would be:
+          ```
+          https://tubearchivist.example.com/api/
+          ```
+          
+          ## Authentication
+          
+          API token will get automatically created, accessible on the settings page. Token needs to be passed as an authorization header with every request.
+          
+          ```bash
+          curl -H "Authorization: Token YOUR_API_TOKEN" https://your-instance.com/api/endpoint/
+          ```
+          
+          ## Endpoints
+          
+          """
+          
+          # Process paths and generate documentation
+          if 'paths' in schema:
+              for path, methods in schema['paths'].items():
+                  doc_content += f"### `{path}`\\n\\n"
+                  
+                  for method, details in methods.items():
+                      method_upper = method.upper()
+                      summary = details.get('summary', '')
+                      description = details.get('description', '')
+                      
+                      doc_content += f"#### {method_upper}\\n\\n"
+                      if summary:
+                          doc_content += f"**Summary**: {summary}\\n\\n"
+                      if description:
+                          doc_content += f"**Description**: {description}\\n\\n"
+                      
+                      # Parameters
+                      if 'parameters' in details:
+                          doc_content += "**Parameters**:\\n\\n"
+                          for param in details['parameters']:
+                              name = param.get('name', '')
+                              param_in = param.get('in', '')
+                              required = param.get('required', False)
+                              param_type = param.get('schema', {}).get('type', 'string')
+                              param_desc = param.get('description', '')
+                              req_text = " (required)" if required else " (optional)"
+                              doc_content += f"- `{name}` ({param_in}, {param_type}){req_text}: {param_desc}\\n"
+                          doc_content += "\\n"
+                      
+                      # Request body
+                      if 'requestBody' in details:
+                          doc_content += "**Request Body**: Required\\n\\n"
+                          content = details['requestBody'].get('content', {})
+                          if 'application/json' in content:
+                              doc_content += "Content-Type: `application/json`\\n\\n"
+                      
+                      # Responses
+                      if 'responses' in details:
+                          doc_content += "**Responses**:\\n\\n"
+                          for status_code, response in details['responses'].items():
+                              response_desc = response.get('description', '')
+                              doc_content += f"- `{status_code}`: {response_desc}\\n"
+                          doc_content += "\\n"
+                      
+                      doc_content += "---\\n\\n"
+          
+          # Add schema information
+          doc_content += """## Data Models
+          
+          For detailed information about request and response schemas, refer to the interactive documentation at `/api/docs/` on your TubeArchivist instance.
+          
+          ## Rate Limiting
+          
+          There are currently no built-in rate limits, but it's recommended to be respectful with API usage to avoid overwhelming your instance.
+          
+          ## Error Handling
+          
+          The API returns standard HTTP status codes. Error responses typically include a JSON object with error details.
+          
+          Common status codes:
+          - `200`: Success
+          - `201`: Created
+          - `400`: Bad Request
+          - `401`: Unauthorized
+          - `403`: Forbidden
+          - `404`: Not Found
+          - `500`: Internal Server Error
+          """
+          
+          # Write the documentation
+          with open('mkdocs/docs/api/generated/reference.md', 'w') as f:
+              f.write(doc_content)
+          
+          # Also save the schema as a downloadable file
+          with open('mkdocs/docs/api/generated/schema.json', 'w') as f:
+              json.dump(schema, f, indent=2)
+          
+          print("API documentation generated successfully!")
+          EOF
+
+      - name: Update mkdocs.yml navigation
+        run: |
+          python << 'EOF'
+          import yaml
+          import json
+          from pathlib import Path
+          
+          # Load current mkdocs.yml
+          with open('mkdocs/mkdocs.yml', 'r') as f:
+              config = yaml.safe_load(f)
+          
+          # Find the API section in navigation and update it
+          nav = config.get('nav', [])
+          for i, item in enumerate(nav):
+              if isinstance(item, dict) and 'API' in item:
+                  # Update the API navigation
+                  nav[i]['API'] = [
+                      {'Introduction': 'api/introduction.md'},
+                      {'API Reference': 'api/generated/reference.md'},
+                      {'OpenAPI Schema': 'api/generated/schema.json'},
+                      {'Interactive Docs': 'api/docs.md'}
+                  ]
+                  break
+          
+          # Write back the updated config
+          with open('mkdocs/mkdocs.yml', 'w') as f:
+              yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+          
+          print("Updated mkdocs.yml navigation")
+          EOF
+
+      - name: Update API docs page
+        run: |
+          cat > mkdocs/docs/api/docs.md << 'EOF'
+          # Interactive API Documentation
+          
+          !!! note
+              Complete **interactive** API documentation is available on your **Tube Archivist** instance at `/api/docs/`.
+          
+          ## Quick Links
+          
+          - **[API Reference](../generated/reference.md)** - Complete endpoint documentation (auto-generated)
+          - **[OpenAPI Schema](../generated/schema.json)** - Download the raw OpenAPI 3.0 schema
+          - **[Introduction](../introduction.md)** - Getting started with the API
+          
+          ## Accessing Interactive Documentation
+          
+          To access the full Swagger UI documentation:
+          
+          1. Navigate to your TubeArchivist instance
+          2. Go to `/api/docs/` (e.g., `https://your-instance.com/api/docs/`)
+          3. Use your API token for authentication if needed
+          
+          The interactive documentation allows you to:
+          
+          - Explore all available endpoints
+          - View detailed request/response schemas  
+          - Test API calls directly from the browser
+          - Download the OpenAPI specification
+          
+          ## Schema Download
+          
+          You can also download the OpenAPI schema directly from your instance:
+          
+          ```bash
+          curl -o api-schema.json https://your-instance.com/api/schema/
+          ```
+          
+          Or use the pre-generated version: [schema.json](../generated/schema.json)
+          EOF
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add the new files
+          git add mkdocs/docs/api/generated/
+          git add mkdocs/docs/api/docs.md
+          git add mkdocs/mkdocs.yml
+          
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Commit with version info
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          git commit -m "Update API documentation for TubeArchivist ${VERSION}
+          
+          - Auto-generated from TubeArchivist ${VERSION}
+          - Updated OpenAPI schema and endpoint documentation
+          - Generated on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          
+          git push
