@@ -165,37 +165,37 @@ jobs:
           
           # Verify the schema is valid JSON and contains expected OpenAPI fields
           python << 'PYTHON_EOF'
-import json
-import sys
+          import json
+          import sys
 
-try:
-    with open('api-schema.json', 'r') as f:
-        schema = json.load(f)
-    
-    # Basic OpenAPI validation
-    if 'openapi' not in schema:
-        print('ERROR: Not a valid OpenAPI schema - missing openapi field')
-        sys.exit(1)
-    
-    if 'info' not in schema:
-        print('ERROR: Not a valid OpenAPI schema - missing info field')
-        sys.exit(1)
-        
-    if 'paths' not in schema or not schema['paths']:
-        print('ERROR: OpenAPI schema has no paths defined')
-        sys.exit(1)
-    
-    print(f'✓ Valid OpenAPI {schema["openapi"]} schema')
-    print(f'✓ API Version: {schema["info"].get("version", "unknown")}')
-    print(f'✓ Endpoints found: {len(schema["paths"])}')
-    
-except json.JSONDecodeError as e:
-    print(f'ERROR: Invalid JSON in schema file: {e}')
-    sys.exit(1)
-except Exception as e:
-    print(f'ERROR: Unexpected error validating schema: {e}')
-    sys.exit(1)
-PYTHON_EOF
+          try:
+              with open('api-schema.json', 'r') as f:
+                  schema = json.load(f)
+              
+              # Basic OpenAPI validation
+              if 'openapi' not in schema:
+                  print('ERROR: Not a valid OpenAPI schema - missing openapi field')
+                  sys.exit(1)
+              
+              if 'info' not in schema:
+                  print('ERROR: Not a valid OpenAPI schema - missing info field')
+                  sys.exit(1)
+                  
+              if 'paths' not in schema or not schema['paths']:
+                  print('ERROR: OpenAPI schema has no paths defined')
+                  sys.exit(1)
+              
+              print(f'✓ Valid OpenAPI {schema["openapi"]} schema')
+              print(f'✓ API Version: {schema["info"].get("version", "unknown")}')
+              print(f'✓ Endpoints found: {len(schema["paths"])}')
+              
+          except json.JSONDecodeError as e:
+              print(f'ERROR: Invalid JSON in schema file: {e}')
+              sys.exit(1)
+          except Exception as e:
+              print(f'ERROR: Unexpected error validating schema: {e}')
+              sys.exit(1)
+          PYTHON_EOF
           
           echo "Schema extracted and validated successfully"
           ls -la api-schema.json
