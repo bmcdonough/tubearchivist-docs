@@ -119,23 +119,88 @@ jobs:
           
           # Wait for TubeArchivist to be ready
           for i in {1..30}; do
-            if curl -f -s http://localhost:8000/api/schema/ > /dev/null; then
-              echo "TubeArchivist is ready!"
+            # Check if the API schema endpoint returns JSON
+            if curl -f -s http://localhost:8000/api/schema/ | python -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
+              echo "TubeArchivist API is ready!"
               break
             fi
-            echo "Waiting for TubeArchivist... (attempt $i/30)"
-            sleep 10
+            echo "Waiting for TubeArchivist API... (attempt $i/30)"
+            
+            # Debug: Show what we're getting from the endpoint
+            echo "Current response from /api/schema/:"
+            curl -s http://localhost:8000/api/schema/ | head -5
+            echo "---"
+            
+            # Also check basic connectivity
+            echo "Basic connectivity test:"
+            curl -s -I http://localhost:8000/ | head -3
+            echo "---"
+            
+            sleep 15
           done
+          
+          # Final check - if we still can't get JSON, show container logs for debugging
+          if ! curl -f -s http://localhost:8000/api/schema/ | python -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
+            echo "ERROR: API still not returning valid JSON after waiting"
+            echo "Container logs:"
+            docker logs tubearchivist-schema --tail 50
+            echo "Redis logs:"
+            docker logs archivist-redis-schema --tail 20
+            echo "Elasticsearch logs:"  
+            docker logs archivist-es-schema --tail 20
+            exit 1
+          fi
 
       - name: Extract API schema
         run: |
-          # Download the OpenAPI schema
-          curl -o api-schema.json http://localhost:8000/api/schema/
+          echo "Extracting OpenAPI schema..."
           
-          # Verify the schema is valid JSON
-          python -m json.tool api-schema.json > /dev/null
+          # Download the OpenAPI schema with error handling
+          if ! curl -f -s -o api-schema.json http://localhost:8000/api/schema/; then
+            echo "ERROR: Failed to download schema from API endpoint"
+            echo "Response content:"
+            curl -s http://localhost:8000/api/schema/ | head -10
+            exit 1
+          fi
           
-          echo "Schema extracted successfully"
+          # Verify the schema is valid JSON and contains expected OpenAPI fields
+          if ! python -c "
+import json
+import sys
+
+try:
+    with open('api-schema.json', 'r') as f:
+        schema = json.load(f)
+    
+    # Basic OpenAPI validation
+    if 'openapi' not in schema:
+        print('ERROR: Not a valid OpenAPI schema - missing openapi field')
+        sys.exit(1)
+    
+    if 'info' not in schema:
+        print('ERROR: Not a valid OpenAPI schema - missing info field')
+        sys.exit(1)
+        
+    if 'paths' not in schema or not schema['paths']:
+        print('ERROR: OpenAPI schema has no paths defined')
+        sys.exit(1)
+    
+    print(f'✓ Valid OpenAPI {schema[\"openapi\"]} schema')
+    print(f'✓ API Version: {schema[\"info\"].get(\"version\", \"unknown\")}')
+    print(f'✓ Endpoints found: {len(schema[\"paths\"])}')
+    
+except json.JSONDecodeError as e:
+    print(f'ERROR: Invalid JSON in schema file: {e}')
+    sys.exit(1)
+except Exception as e:
+    print(f'ERROR: Unexpected error validating schema: {e}')
+    sys.exit(1)
+"; then
+            echo "Schema validation failed"
+            exit 1
+          fi
+          
+          echo "Schema extracted and validated successfully"
           ls -la api-schema.json
 
       - name: Stop TubeArchivist instance
