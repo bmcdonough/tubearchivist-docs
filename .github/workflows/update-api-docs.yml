@@ -164,7 +164,7 @@ jobs:
           fi
           
           # Verify the schema is valid JSON and contains expected OpenAPI fields
-          if ! python -c "
+          python << 'PYTHON_EOF'
 import json
 import sys
 
@@ -185,9 +185,9 @@ try:
         print('ERROR: OpenAPI schema has no paths defined')
         sys.exit(1)
     
-    print(f'✓ Valid OpenAPI {schema[\"openapi\"]} schema')
-    print(f'✓ API Version: {schema[\"info\"].get(\"version\", \"unknown\")}')
-    print(f'✓ Endpoints found: {len(schema[\"paths\"])}')
+    print(f'✓ Valid OpenAPI {schema["openapi"]} schema')
+    print(f'✓ API Version: {schema["info"].get("version", "unknown")}')
+    print(f'✓ Endpoints found: {len(schema["paths"])}')
     
 except json.JSONDecodeError as e:
     print(f'ERROR: Invalid JSON in schema file: {e}')
@@ -195,10 +195,7 @@ except json.JSONDecodeError as e:
 except Exception as e:
     print(f'ERROR: Unexpected error validating schema: {e}')
     sys.exit(1)
-"; then
-            echo "Schema validation failed"
-            exit 1
-          fi
+PYTHON_EOF
           
           echo "Schema extracted and validated successfully"
           ls -la api-schema.json
