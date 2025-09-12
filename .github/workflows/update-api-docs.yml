@@ -110,8 +110,8 @@ jobs:
             es:
           EOF
 
-          # Start services
-          docker-compose -f docker-compose-schema.yml up -d
+          # Start services (using docker compose without hyphen)
+          docker compose -f docker-compose-schema.yml up -d
           
           # Wait for services to be ready
           echo "Waiting for services to start..."
@@ -140,7 +140,7 @@ jobs:
 
       - name: Stop TubeArchivist instance
         run: |
-          docker-compose -f docker-compose-schema.yml down -v
+          docker compose -f docker-compose-schema.yml down -v
           docker system prune -f
 
       - name: Install dependencies
