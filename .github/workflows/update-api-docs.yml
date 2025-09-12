@@ -118,36 +118,27 @@ jobs:
           sleep 60
           
           # Wait for TubeArchivist to be ready
-          for i in {1..30}; do
-            # Check if the API schema endpoint returns JSON
-            if curl -f -s http://localhost:8000/api/schema/ | python -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
+          for i in {1..20}; do
+            # Check if the API schema endpoint returns JSON (with proper Accept header)
+            if curl -f -s -H "Accept: application/json" http://localhost:8000/api/schema/ | python -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
               echo "TubeArchivist API is ready!"
               break
             fi
-            echo "Waiting for TubeArchivist API... (attempt $i/30)"
+            echo "Waiting for TubeArchivist API... (attempt $i/20)"
             
-            # Debug: Show what we're getting from the endpoint
-            echo "Current response from /api/schema/:"
-            curl -s http://localhost:8000/api/schema/ | head -5
+            # Debug: Show what we're getting from the endpoint with JSON header
+            echo "Response with JSON Accept header:"
+            curl -s -H "Accept: application/json" http://localhost:8000/api/schema/ | head -5
             echo "---"
             
-            # Also check basic connectivity
-            echo "Basic connectivity test:"
-            curl -s -I http://localhost:8000/ | head -3
-            echo "---"
-            
-            sleep 15
+            sleep 10
           done
           
           # Final check - if we still can't get JSON, show container logs for debugging
-          if ! curl -f -s http://localhost:8000/api/schema/ | python -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
+          if ! curl -f -s -H "Accept: application/json" http://localhost:8000/api/schema/ | python -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
             echo "ERROR: API still not returning valid JSON after waiting"
             echo "Container logs:"
             docker logs tubearchivist-schema --tail 50
-            echo "Redis logs:"
-            docker logs archivist-redis-schema --tail 20
-            echo "Elasticsearch logs:"  
-            docker logs archivist-es-schema --tail 20
             exit 1
           fi
 
@@ -155,11 +146,13 @@ jobs:
         run: |
           echo "Extracting OpenAPI schema..."
           
-          # Download the OpenAPI schema with error handling
-          if ! curl -f -s -o api-schema.json http://localhost:8000/api/schema/; then
+          # Download the OpenAPI schema with error handling (request JSON format)
+          if ! curl -f -s -H "Accept: application/json" -o api-schema.json http://localhost:8000/api/schema/; then
             echo "ERROR: Failed to download schema from API endpoint"
-            echo "Response content:"
+            echo "Response content (YAML):"
             curl -s http://localhost:8000/api/schema/ | head -10
+            echo "Response content (JSON):"
+            curl -s -H "Accept: application/json" http://localhost:8000/api/schema/ | head -10
             exit 1
           fi
           
