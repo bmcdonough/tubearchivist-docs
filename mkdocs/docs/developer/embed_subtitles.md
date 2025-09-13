@@ -54,6 +54,11 @@ Combining these with the CLI defaults gives:
 ```
 
 ## Implementation
+### `backend/download/src/yt_dlp_handler.py`
+- _build_obs_basic
+- _build_obs_postprocessors
+
+
 ### `frontend/src/pages/SettingsApplication.tsx`
 ```python
   const [embedSubtitle, setEmbedSubtitle] = useState(false);
