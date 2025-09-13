@@ -1,11 +1,12 @@
 # Summary of embed subtitles feature
 - Merging subtitles as a feature to support Plex
 
-## yt-dlp cli options
+## yt-dlp example
 - duplicate the cli functionality of the yt-dlp command
 ```shell
 yt-dlp --format bestvideo[height=720][vcodec*=av01]+bestaudio[acodec*=mp4a] --write-subs --sub-langs en-US --embed-subs --embed-thumbnail --embed-metadata --merge-output-format mp4 https://youtu.be/VIDEO_ID
 ```
+
 ## yt-dlp cli_to_api
 - convert the cli options to api options
 ```shell
@@ -70,10 +71,12 @@ Combining these with the CLI defaults gives:
                     />
                   </div>
 ```
+
 ### `frontend/src/api/loader/loadAppsettingsConfig.ts`
 ```python
     embed_subtitle: boolean;
 ```
+
 ### `backend/video/src/subtitle.py`
 ```python
     def embed_subtitle_to_video(self):
@@ -124,12 +127,14 @@ Combining these with the CLI defaults gives:
             except FileNotFoundError:
                 print(f"{youtube_id}: {file_path} failed to delete")
 ```
+
 ### `backend/appsettings/src/config.py`
 ```python
     embed_subtitle: bool
 
             "embed_subtitle": False,
 ```
+
 ### `backend/download/src/yt_dlp_handler.py`
 ```python
         # Configure subtitle settings
