@@ -1,8 +1,14 @@
 # Summary of embed subtitles feature
-- Merging subtitles as a feature was needed to support Plex
+- Merging subtitles as a feature to support Plex
+
+## yt-dlp cli options
+- duplicate the cli functionality of the yt-dlp command
+```shell
+yt-dlp --format bestvideo[height=720][vcodec*=av01]+bestaudio[acodec*=mp4a] --write-subs --sub-langs en-US --embed-subs --embed-thumbnail --embed-metadata --merge-output-format mp4 https://youtu.be/VIDEO_ID
+```
 
 ## Implementation
-1. adding to `frontend/src/pages/SettingsApplication.tsx`
+### `frontend/src/pages/SettingsApplication.tsx`
 ```python
   const [embedSubtitle, setEmbedSubtitle] = useState(false);
 
@@ -19,11 +25,11 @@
                     />
                   </div>
 ```
-2. adding to `frontend/src/api/loader/loadAppsettingsConfig.ts`
+### `frontend/src/api/loader/loadAppsettingsConfig.ts`
 ```python
     embed_subtitle: boolean;
 ```
-3. additions to `backend/video/src/subtitle.py`
+### `backend/video/src/subtitle.py`
 ```python
     def embed_subtitle_to_video(self):
         """embed subtitle file into video file"""
@@ -73,13 +79,13 @@
             except FileNotFoundError:
                 print(f"{youtube_id}: {file_path} failed to delete")
 ```
-4. additions to `backend/appsettings/src/config.py`
+### `backend/appsettings/src/config.py`
 ```python
     embed_subtitle: bool
 
             "embed_subtitle": False,
 ```
-5. additions to `backend/download/src/yt_dlp_handler.py`
+### `backend/download/src/yt_dlp_handler.py`
 ```python
         # Configure subtitle settings
         subtitle_language = self.config["downloads"]["subtitle"]
