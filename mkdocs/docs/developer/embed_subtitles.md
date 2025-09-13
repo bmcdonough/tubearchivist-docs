@@ -1,32 +1,32 @@
-# Summary of merge subtitles feature
+# Summary of embed subtitles feature
 - Merging subtitles as a feature was needed to support Plex
 
 ## Implementation
 1. adding to `frontend/src/pages/SettingsApplication.tsx`
 ```python
-  const [mergeSubtitle, setMergeSubtitle] = useState(false);
+  const [embedSubtitle, setEmbedSubtitle] = useState(false);
 
-    setMergeSubtitle(appSettingsConfigData?.downloads.merge_subtitle || false);
+    setEmbedSubtitle(appSettingsConfigData?.downloads.embed_subtitle || false);
 
                   <div className="settings-box-wrapper">
                     <div>
-                      <p>Merge subtitle to video</p>
+                      <p>Embed subtitle to video</p>
                     </div>
                     <ToggleConfig
-                      name="downloads.merge_subtitle"
-                      value={mergeSubtitle}
+                      name="downloads.embed_subtitle"
+                      value={embedSubtitle}
                       updateCallback={handleUpdateConfig}
                     />
                   </div>
 ```
 2. adding to `frontend/src/api/loader/loadAppsettingsConfig.ts`
 ```python
-    merge_subtitle: boolean;
+    embed_subtitle: boolean;
 ```
 3. additions to `backend/video/src/subtitle.py`
 ```python
-    def merge_subtitle_to_video(self):
-        """merge subtitle file into video file"""
+    def embed_subtitle_to_video(self):
+        """embed subtitle file into video file"""
         # This function will be implemented based on further instructions
         pass
 
@@ -75,9 +75,9 @@
 ```
 4. additions to `backend/appsettings/src/config.py`
 ```python
-    merge_subtitle: bool
+    embed_subtitle: bool
 
-            "merge_subtitle": False,
+            "embed_subtitle": False,
 ```
 5. additions to `backend/download/src/yt_dlp_handler.py`
 ```python
