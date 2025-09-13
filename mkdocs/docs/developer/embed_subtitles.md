@@ -6,6 +6,51 @@
 ```shell
 yt-dlp --format bestvideo[height=720][vcodec*=av01]+bestaudio[acodec*=mp4a] --write-subs --sub-langs en-US --embed-subs --embed-thumbnail --embed-metadata --merge-output-format mp4 https://youtu.be/VIDEO_ID
 ```
+## yt-dlp cli_to_api
+- convert the cli options to api options
+```shell
+(.venv) username@host:~/github/yt-dlp/yt-dlp/devscripts$ python cli_to_api.py --format bestvideo[height=720][vcodec*=av01]+bestaudio[acodec*=mp4a] --write-subs --sub-langs en-US --embed-subs --embed-thumbnail --embed-metadata --merge-output-format mp4
+
+The arguments passed translate to:
+
+{'format': 'bestvideo[height=720][vcodec*=av01]+bestaudio[acodec*=mp4a]',
+ 'merge_output_format': 'mp4',
+ 'outtmpl': {'pl_thumbnail': ''},
+ 'postprocessors': [{'already_have_subtitle': True,
+                     'key': 'FFmpegEmbedSubtitle'},
+                    {'add_chapters': True,
+                     'add_infojson': 'if_exists',
+                     'add_metadata': True,
+                     'key': 'FFmpegMetadata'},
+                    {'already_have_thumbnail': False, 'key': 'EmbedThumbnail'}],
+ 'subtitleslangs': ['en-US'],
+ 'writesubtitles': True,
+ 'writethumbnail': True}
+
+Combining these with the CLI defaults gives:
+
+{'extract_flat': 'discard_in_playlist',
+ 'format': 'bestvideo[height=720][vcodec*=av01]+bestaudio[acodec*=mp4a]',
+ 'fragment_retries': 10,
+ 'ignoreerrors': 'only_download',
+ 'merge_output_format': 'mp4',
+ 'outtmpl': {'pl_thumbnail': ''},
+ 'postprocessors': [{'already_have_subtitle': True,
+                     'key': 'FFmpegEmbedSubtitle'},
+                    {'add_chapters': True,
+                     'add_infojson': 'if_exists',
+                     'add_metadata': True,
+                     'key': 'FFmpegMetadata'},
+                    {'already_have_thumbnail': False, 'key': 'EmbedThumbnail'},
+                    {'key': 'FFmpegConcat',
+                     'only_multi_video': True,
+                     'when': 'playlist'}],
+ 'retries': 10,
+ 'subtitleslangs': ['en-US'],
+ 'warn_when_outdated': True,
+ 'writesubtitles': True,
+ 'writethumbnail': True}
+```
 
 ## Implementation
 ### `frontend/src/pages/SettingsApplication.tsx`
