@@ -1,5 +1,45 @@
 # Summary of embed subtitles feature
-- Merging subtitles as a feature to support Plex
+- Embedding subtitles as a feature to support Plex
+- My specific use case was a Youtube channel that uses subtitles for additional details during the video.  This channel has no voice audio to be transcribed.
+- The implementation adds a new configuration option `add_subtitles` that allows users to embed subtitles directly into downloaded MP4 files during the download process.
+
+### Key Changes Made:
+
+**Backend Configuration (`backend/appsettings/`):**
+- Added `add_subtitles: bool` field to configuration schema in `src/config.py:38`
+- Added corresponding serializer field in `serializers.py:47`
+- Default value set to `False` for backward compatibility
+
+**Download Handler (`backend/download/src/yt_dlp_handler.py`):**
+- Enhanced `_build_obs()` method to initialize subtitle-related options:
+  - `writesubtitles: False` (default)
+  - `subtitleslangs: []` (default empty)
+- Modified `_build_obs_postprocessors()` method to conditionally add FFmpegEmbedSubtitle processor:
+  - When `add_subtitles` is enabled, adds postprocessor with `already_have_subtitle: True`
+  - Sets `subtitleslangs` to configured subtitle language
+  - Enables `writesubtitles` option
+- Improved error handling in `_progress_hook()` method to handle missing `info_dict` gracefully
+
+**Frontend Interface (`frontend/src/`):**
+- Added new state variable `embedSubtitles` in `SettingsApplication.tsx:60`
+- Added toggle control in UI with label "Embed Subtitles"
+- Updated TypeScript interfaces in `loadAppsettingsConfig.ts:19` and `AppSettingsStore.ts:26`
+- Enhanced help text to explain: "Embed subtitles adds the subtitles to the mp4 file."
+
+**Bug Fixes:**
+- Fixed variable name typo in `channel/src/remote_query.py:116` (`query` → `queries`)
+- Improved error handling for missing video info during download progress reporting
+
+### Technical Implementation Details:
+
+The feature leverages yt-dlp's built-in subtitle embedding capabilities through the `FFmpegEmbedSubtitle` postprocessor. When enabled:
+
+1. Subtitles are downloaded in the configured language
+2. FFmpeg embeds the subtitle streams directly into the MP4 container
+3. The embedded subtitles remain accessible to media players like Plex
+4. Original subtitle files are processed by the existing subtitle indexing system
+
+This implementation follows the established pattern for other embedding features (metadata, thumbnails) and maintains consistency with the existing codebase architecture.
 
 ## yt-dlp example
 - duplicate the cli functionality of the yt-dlp command
@@ -54,103 +94,82 @@ Combining these with the CLI defaults gives:
 ```
 
 ## Implementation
-### `backend/download/src/yt_dlp_handler.py`
-- _build_obs_basic
-- _build_obs_postprocessors
+### Frontend
 
+**SettingsApplication.tsx:**
+```typescript
+// State variable (line 60)
+const [embedSubtitles, setEmbedSubtitles] = useState(false);
 
-### `frontend/src/pages/SettingsApplication.tsx`
-```python
-  const [embedSubtitle, setEmbedSubtitle] = useState(false);
+// Initialization from config (line 119)
+setEmbedSubtitles(appSettingsConfigData?.downloads.add_subtitles || false);
 
-    setEmbedSubtitle(appSettingsConfigData?.downloads.embed_subtitle || false);
-
-                  <div className="settings-box-wrapper">
-                    <div>
-                      <p>Embed subtitle to video</p>
-                    </div>
-                    <ToggleConfig
-                      name="downloads.embed_subtitle"
-                      value={embedSubtitle}
-                      updateCallback={handleUpdateConfig}
-                    />
-                  </div>
+// UI Component (lines 613-622)
+<div className="settings-box-wrapper">
+  <div>
+    <p>Embed Subtitles</p>
+  </div>
+  <ToggleConfig
+    name="downloads.add_subtitles"
+    value={embedSubtitles}
+    updateCallback={handleUpdateConfig}
+  />
+</div>
 ```
 
-### `frontend/src/api/loader/loadAppsettingsConfig.ts`
-```python
-    embed_subtitle: boolean;
+**loadAppsettingsConfig.ts:**
+```typescript
+// Type definition (line 19)
+add_subtitles: boolean;
 ```
 
-### `backend/video/src/subtitle.py`
-```python
-    def embed_subtitle_to_video(self):
-        """embed subtitle file into video file"""
-        # This function will be implemented based on further instructions
-        pass
-
-    def delete(self, subtitles=False):
-        """delete subtitles from index and filesystem"""
-        youtube_id = self.video.youtube_id
-
-        if not subtitles:
-            return False
-
-        indexed = []
-        paths = []
-
-        # delete from ES
-        for subtitle in subtitles:
-            media_url = subtitle.get("media_url")
-            lang = subtitle.get("lang")
-            paths.append(media_url)
-            indexed.append(f"{youtube_id}-{lang}-")
-
-        if indexed:
-            # delete from index
-            query = {
-                "query": {
-                    "bool": {"should": []}
-                }
-            }
-            for idx in indexed:
-                match = {"prefix": {"subtitle_fragment_id": idx}}
-                query["query"]["bool"]["should"].append(match)
-
-            response, status_code = ElasticWrap("ta_subtitle/_delete_by_query").post(
-                query
-            )
-            if not status_code == 200:
-                print(response)
-
-        # delete files
-        videos_base = EnvironmentSettings.MEDIA_DIR
-        for file_name in paths:
-            file_path = os.path.join(videos_base, file_name)
-            try:
-                os.remove(file_path)
-            except FileNotFoundError:
-                print(f"{youtube_id}: {file_path} failed to delete")
+**AppSettingsStore.ts:**
+```typescript
+// Store field (line 26)
+add_subtitles: false,
 ```
 
-### `backend/appsettings/src/config.py`
-```python
-    embed_subtitle: bool
+### Backend
 
-            "embed_subtitle": False,
+**appsettings/src/config.py:**
+```python
+# Type definition (line 38)
+add_subtitles: bool
+
+# Default configuration (line 89)
+"add_subtitles": False,
 ```
 
-### `backend/download/src/yt_dlp_handler.py`
+**appsettings/serializers.py:**
 ```python
-        # Configure subtitle settings
-        subtitle_language = self.config["downloads"]["subtitle"]
-        if subtitle_language:
-            # If subtitle language is set, enable writing and embedding subtitles
-            self.obs["writesubtitles"] = True
-            self.obs["embedsubtitles"] = True
-            self.obs["subtitleslangs"] = [s.strip() for s in subtitle_language.split(",")]
-        else:
-            # If subtitle language is not set, disable subtitle features
-            self.obs["writesubtitles"] = False
-            self.obs["embedsubtitles"] = False
+# Serializer field (line 47)
+add_subtitles = serializers.BooleanField()
+```
+
+### yt-dlp Handler
+
+**download/src/yt_dlp_handler.py:**
+
+```python
+# Enhanced _build_obs() method - default subtitle options (lines 164-167)
+"writesubtitles": False,
+"writethumbnail": False,
+"noplaylist": True,
+"color": "no_color",
+"subtitleslangs": [],
+
+# New postprocessor logic in _build_obs_postprocessors() (lines 222-231)
+if self.config["downloads"]["add_subtitles"]:
+    postprocessors.append(
+        {
+            "key": "FFmpegEmbedSubtitle",
+            "already_have_subtitle": True,
+        }
+    )
+    self.obs["subtitleslangs"] = [self.config["downloads"]["subtitle"]]
+    self.obs["writesubtitles"] = True
+
+# Improved error handling in _progress_hook() (lines 146-148)
+info_dict = response.get("info_dict", {})
+title = info_dict.get("title", "Processing")
 ```
