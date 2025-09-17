@@ -2,6 +2,46 @@
 - After including the feature of embeded subtitles in the mp4 container, I wanted to verify the file contained the subtitles.
 - This lead me to adding details to the metadata of the video.
 
+## Key Changes Made:
+
+**Backend Stream Processing (`backend/video/src/media_streams.py`):**
+- Added new `_extract_subtitle_metadata()` method to handle subtitle stream parsing
+- Enhanced video metadata extraction to identify and separate thumbnail attachments from video streams
+- Added language detection for all stream types (video, audio, subtitle)
+- Improved error handling for missing bitrate information with default values
+
+**Backend Serialization (`backend/video/serializers.py`):**
+- Extended `StreamItemSerializer` to support subtitle streams by adding "subtitle" to type choices
+- Made codec and bitrate fields optional (`required=False`) to handle subtitle streams without bitrate
+- Added new `language` field to capture stream language information
+- Updated field requirements to accommodate different stream types
+
+**Frontend Display Logic (`frontend/src/pages/Video.tsx`):**
+- Enhanced stream display to conditionally show bitrate only when available
+- Added language information display for all stream types
+- Improved visual formatting with proper separators between stream metadata
+- Updated spacing and layout for better readability of stream information
+
+**Frontend Type Definitions (`frontend/src/pages/Home.tsx`):**
+- Updated `StreamType` interface to make codec and bitrate optional properties
+- Added optional `language` field to stream type definition
+- Maintained backward compatibility while supporting new subtitle metadata
+
+**Development Dependencies (`frontend/package.json`):**
+- Added `@eslint/js` package for improved code linting and quality checks
+
+### Technical Implementation Details:
+
+The changes enable comprehensive metadata extraction and display for all media streams including subtitles. The implementation:
+
+1. **Identifies subtitle streams** in the media container and extracts their codec and language information
+2. **Separates thumbnail attachments** from actual video streams for cleaner metadata presentation
+3. **Provides language information** for video, audio, and subtitle streams when available
+4. **Handles optional fields gracefully** in both backend serialization and frontend display
+5. **Maintains backward compatibility** with existing video metadata while extending support for subtitles
+
+This enhancement allows users to verify that embedded subtitles are properly included in their downloaded videos and provides detailed technical information about all media streams in the container.
+
 ## ffprobe output
 ```shell
 root@docker2404:/var/lib/docker/volumes/tubearchivist_media-dev/_data/UCvHGfNuYBWJW54YRUz_jU_g# ffprobe -v quiet -print_format json -show_streams -show_format wnWi5OmG7HA.mp4
