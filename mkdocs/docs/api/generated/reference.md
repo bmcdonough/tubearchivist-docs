@@ -1,14 +1,14 @@
 # API Reference
 
 !!! info "Auto-generated Documentation"
-    This documentation was automatically generated from TubeArchivist v0.5.7 on $(date).
+    This documentation was automatically generated from TubeArchivist v0.5.8 on $(date).
     
     For the interactive API explorer, visit `/api/docs/` on your TubeArchivist instance.
 
 ## API Information
 
 - **Title**: Tube Archivist API
-- **Version**: v0.5.7
+- **Version**: v0.5.8
 - **Description**: API documentation for Tube Archivist backend.
 
 ## Base URL

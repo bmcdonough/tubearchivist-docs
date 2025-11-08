@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Tube Archivist API",
-    "version": "v0.5.7",
+    "version": "v0.5.8",
     "description": "API documentation for Tube Archivist backend."
   },
   "paths": {
@@ -5045,6 +5045,9 @@
           "resync_thumbs": {
             "$ref": "#/components/schemas/TaskNotificationItem"
           },
+          "resync_metadata": {
+            "$ref": "#/components/schemas/TaskNotificationItem"
+          },
           "index_playlists": {
             "$ref": "#/components/schemas/TaskNotificationItem"
           },
@@ -6113,12 +6116,13 @@
           "rescan_filesystem",
           "thumbnail_check",
           "resync_thumbs",
+          "resync_metadata",
           "index_playlists",
           "subscribe_to",
           "version_check"
         ],
         "type": "string",
-        "description": "* `update_subscribed` - update_subscribed\n* `download_pending` - download_pending\n* `extract_download` - extract_download\n* `check_reindex` - check_reindex\n* `manual_import` - manual_import\n* `run_backup` - run_backup\n* `restore_backup` - restore_backup\n* `rescan_filesystem` - rescan_filesystem\n* `thumbnail_check` - thumbnail_check\n* `resync_thumbs` - resync_thumbs\n* `index_playlists` - index_playlists\n* `subscribe_to` - subscribe_to\n* `version_check` - version_check"
+        "description": "* `update_subscribed` - update_subscribed\n* `download_pending` - download_pending\n* `extract_download` - extract_download\n* `check_reindex` - check_reindex\n* `manual_import` - manual_import\n* `run_backup` - run_backup\n* `restore_backup` - restore_backup\n* `rescan_filesystem` - rescan_filesystem\n* `thumbnail_check` - thumbnail_check\n* `resync_thumbs` - resync_thumbs\n* `resync_metadata` - resync_metadata\n* `index_playlists` - index_playlists\n* `subscribe_to` - subscribe_to\n* `version_check` - version_check"
       },
       "TaskNotificationItem": {
         "type": "object",
@@ -6307,6 +6311,14 @@
             "type": "boolean",
             "nullable": true
           },
+          "hide_watched_channel": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "hide_watched_playlist": {
+            "type": "boolean",
+            "nullable": true
+          },
           "file_size_unit": {
             "$ref": "#/components/schemas/FileSizeUnitEnum"
           },
@@ -6329,6 +6341,8 @@
           "file_size_unit",
           "grid_items",
           "hide_watched",
+          "hide_watched_channel",
+          "hide_watched_playlist",
           "page_size",
           "show_help_text",
           "show_ignored_only",
